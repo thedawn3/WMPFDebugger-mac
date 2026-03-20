@@ -87,11 +87,8 @@ The current local validation baseline was captured against:
 
 - WeChat `4.1.7 (34371)`
 - `WeChatAppEx` runtime `4066645761`
-- mini program appid `wx5a8f481d967649eb`
-- mini program version `137`
-- observed entry URL `https://servicewechat.com/wx5a8f481d967649eb/137/page-frame.html`
 
-This target is useful as a regression reference, but it is not a requirement
-for the bridge itself. Other mini programs may behave differently depending on
-whether the CDP target reaches only WebView or also exposes AppService-level
+This baseline is useful as a regression reference, but it is not a requirement
+for the bridge itself. Different mini programs may behave differently depending
+on whether the CDP target reaches only WebView or also exposes AppService-level
 state.

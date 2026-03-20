@@ -39,12 +39,6 @@ macOS 上的微信小程序远程调试桥，基于微信私有远程调试协�
 - `WeChatAppEx` runtime `client_version`: `4066645761` (`0xf2641701`)
 - XWEB / WMPF config target: `18788`
 
-当前实际验证过的目标小程序：
-
-- appid: `wx5a8f481d967649eb`
-- mini program version: `137`
-- observed page entry: `https://servicewechat.com/wx5a8f481d967649eb/137/page-frame.html`
-
 这组版本信息的详细记录见 `docs/VERSION_MATRIX.md`。
 
 ## Supported versions

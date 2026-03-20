@@ -30,7 +30,6 @@ The fork now explicitly records the local versions it was validated against:
 - WeChat app `4.1.7`
 - bundle version `34371`
 - `WeChatAppEx` runtime `client_version` `4066645761` (`0xf2641701`)
-- target mini program `wx5a8f481d967649eb` version `137`
 
 This is documented in `docs/VERSION_MATRIX.md` so later maintainers know which
 results came from a real local run and which parts remain generalized.

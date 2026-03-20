@@ -21,16 +21,13 @@ That mapping is implemented in `src/index.js`.
 
 ## Current verified mini program target
 
-The currently verified local mini program used during CDP bridge testing is:
-
-- appid: `wx5a8f481d967649eb`
-- mini program version: `137`
-- observed page entry:
-  `https://servicewechat.com/wx5a8f481d967649eb/137/page-frame.html`
+The currently verified local CDP bridge tests were run against a real mini
+program business page on this machine. The repository intentionally does not
+record that mini program's appid.
 
 ## Verification notes
 
-This target was sufficient to verify:
+That real target was sufficient to verify:
 
 - Chrome DevTools frontend attachment
 - script discovery and script source fetch
