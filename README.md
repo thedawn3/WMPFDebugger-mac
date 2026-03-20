@@ -1,168 +1,213 @@
 # WMPFDebugger-mac
 
-macOS 版本的微信小程序调试工具（支持 Intel x64 和 Apple Silicon arm64）
+macOS 上的微信小程序远程调试桥，基于微信私有远程调试协议转成标准 Chrome DevTools Protocol (CDP)。
 
-## 项目简介
+这个仓库当前已经整理成适合长期维护的 fork 基线，重点针对本机验证过的微信 `4.1.7 (34371)` / `XWEB 18788` 场景做了稳定性修正。
 
-本项目基于以下两个优秀的开源项目修改而成：
+## Lineage
 
-- [WMPFDebugger](https://github.com/evi0s/WMPFDebugger) - Windows 版本的微信小程序调试工具
-- [WMPFDebugger-arm](https://github.com/chain00x/WMPFDebugger-arm) - macOS ARM 版本的适配
+代码血缘分两层：
 
-本项目在 WMPFDebugger-arm 的基础上，实现了以下改进(还有倒退 笑)：
+- 原始项目：[`evi0s/WMPFDebugger`](https://github.com/evi0s/WMPFDebugger)
+- macOS 直接基线：[`linguo2625469/WMPFDebugger-mac`](https://github.com/linguo2625469/WMPFDebugger-mac)
 
-- ✅ **双架构支持**：同时支持 macOS Intel (x64) 和 Apple Silicon (arm64/M芯片)
-- ✅ **完善的版本管理**：通过配置文件管理不同版本的偏移地址，便于维护和扩展
-- ✅ **自动架构检测**：自动检测系统架构并加载对应的配置
-- ✅ **自动版本检测**：自动检测 WeChatAppEx 版本并加载对应的配置文件
-- ✅ **移除ts**：直接使用js，方便小白运行(是的我就是小白)
+中间适配分支还包括：
 
-## 工作原理
+- [`chain00x/WMPFDebugger-arm`](https://github.com/chain00x/WMPFDebugger-arm)
 
-这个工具通过 patch 一些 Chrome 调试协议（CDP）的过滤器和其他的条件判断来强制小程序连接到外部调试器（也就是远程调试，LanDebug 模式）。这个调试协议是基于 protobuf 实现的私有协议，通过逆向开发者工具提取相应的协议实现，该工具实现了一个简单的小程序调试协议转换为标准 Chrome 调试协议，从而允许我们使用标准基于 chromium 浏览器的内嵌开发者工具来调试任意小程序。
+当前这个整理版是基于 `linguo2625469/WMPFDebugger-mac` 做的长期维护 fork，但文档和设计说明统一以 `evi0s/WMPFDebugger` 作为原始来源来描述。
 
-## 系统要求
+## This fork changed what
 
-- **操作系统**：macOS（支持 Intel x64 和 Apple Silicon arm64）
-- **Node.js**：至少 LTS v22 版本
-- **包管理器**：yarn
-- **浏览器**：基于 Chromium 的浏览器（如 Chrome、Edge 等）
-- **微信**：已安装并运行微信 macOS 版本
-- **关闭SIP**：您必须关闭电脑的SIP，否则frida没有权限
+相对 mac 直接基线，这个整理版新增了几类改动：
 
-## 安装
+- 自动识别微信 `4.1.7 (34371)`，并映射到 `18788` 偏移配置
+- 默认启用稳定模式，降低 `WeApp` 闪退概率
+- 默认只附加主 `WeChatAppEx` 进程，不再默认扫全部 `--type=` 子进程
+- hook 增加运行时开关，可按需禁用高风险 patch
+- 补充协议级验证脚本，便于在没有稳定 DevTools UI 的情况下做回归测试
+- 补充文档，明确长期使用流程和风险边界
 
-**第 1 步** 克隆仓库并安装依赖
+详细变更见 `docs/FORK_NOTES.md`。
+
+## Supported versions
+
+当前明确整理和验证过的版本：
+
+- `34371 -> 18788` (macOS WeChat `4.1.7`)
+- `18152`
+- `18788`
+
+版本号检测命令：
 
 ```bash
-git clone https://github.com/your-username/WMPFDebugger-mac
-cd WMPFDebugger-mac
+defaults read /Applications/WeChat.app/Contents/MacOS/WeChatAppEx.app/Contents/Info.plist CFBundleVersion
+```
+
+如果输出是纯 `34371`，本仓库会自动映射到 `18788` 配置。
+
+## Requirements
+
+- macOS
+- Node.js 22+
+- yarn
+- Chromium 内核浏览器，推荐 `Google Chrome`
+- 已安装并运行微信 macOS 版
+- SIP 已关闭，否则 Frida 无法附加
+
+## Install
+
+```bash
 yarn
 ```
 
-## 使用方法
+## Recommended stable workflow
 
-**第 2 步** 运行调试服务器（请注意需要关闭SIP不然会报错）
+先按这个流程用，不要一上来就开 full mode。
+
+1. 完全退出微信和本工具
+2. 正常启动微信
+3. 先把目标小程序正常打开一次，让缓存和运行态预热完成
+4. 回到仓库执行：
 
 ```bash
-node src/index.js
+yarn start:stable
 ```
 
-该命令会：
-- 启动调试服务器（端口 9421）
-- 启动 CDP 代理服务器（端口 62000）
-- 自动检测 WeChatAppEx 版本和系统架构
-- 自动注入 hook 脚本到小程序运行时
+5. 再次打开目标小程序，进入真正的业务页面，不要停在“小程序列表/最近使用”页
+6. 用 `Google Chrome` 打开：
 
-> **重要提示**：在此步骤之后，你需要**先启动小程序**（第 3 步），**再打开开发者工具**（第 4 步）。如果操作顺序相反，你可能需要重新执行步骤 2-4。
-
-**第 3 步** 打开任意你想调试的小程序
-
-在微信中打开任意小程序，确保小程序正常运行。
-
-**第 4 步** 打开 Chrome DevTools
-
-在浏览器中访问以下地址：
-
-```
+```text
 devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
 ```
 
-即可开始调试。你可以修改 `src/index.ts` 中的 `CDP_PORT` 常量来更改端口号（默认为 62000）。
+如果你要做回归验证，而不是人工点 DevTools，直接跑：
 
-## 支持的版本
-
-当前支持的 WMPF 版本：
-
-- **18788** (最新)
-- **18152**
-
-> **如何检查你的 WeChatAppEx 版本**：
-> 
-> 在终端运行以下命令：
-> ```bash
-> defaults read /Applications/WeChat.app/Contents/MacOS/WeChatAppEx.app/Contents/Info.plist CFBundleVersion
-> ```
-> 版本号是输出中第二个数字（例如：`4.18788.xxx` 中的 `18788`）
-
-## 版本管理
-
-本项目使用配置文件管理不同版本的偏移地址。配置文件位于 `frida/config/` 目录下，命名格式为 `addresses.{版本号}.json`。
-
-每个配置文件包含：
-- `Version`：版本号
-- `Arch`：架构配置
-  - `arm64`：Apple Silicon (M芯片) 的偏移地址
-  - `x64`：Intel 处理器的偏移地址
-
-系统会自动：
-1. 检测当前运行的 WeChatAppEx 版本
-2. 检测系统架构（arm64 或 x64）
-3. 加载对应的配置文件
-
-如果需要添加新版本支持，请在 `frida/config/` 目录下创建新的配置文件。
-
-## 项目结构
-
-```
-WMPFDebugger-mac/
-├── frida/
-│   ├── config/              # 版本配置文件目录
-│   │   ├── addresses.18152.json
-│   │   └── addresses.18788.json
-│   └── hook.js             # Frida hook 脚本
-├── src/
-│   ├── index.ts            # 主程序入口
-│   └── third-party/        # 第三方协议实现（来自微信开发者工具）
-│       ├── RemoteDebugCodex.js
-│       ├── RemoteDebugConstants.js
-│       ├── RemoteDebugUtils.js
-│       └── WARemoteDebugProtobuf.js
-├── package.json
-├── tsconfig.json
-└── README.md
+```bash
+yarn probe:basic
+yarn probe:advanced
 ```
 
-## 故障排除
+更详细的稳定使用说明见 `docs/STABLE_MODE.md`。
 
-### 无法找到 WeChatAppEx 进程
+## Runtime modes
 
-确保：
-- 微信已启动
-- 至少打开过一个小程序（这样才会启动 WeChatAppEx 进程）
+### Stable mode (default)
 
-### 连接失败
+```bash
+yarn start:stable
+```
 
-1. 确保先启动小程序，再打开 DevTools
-2. 检查端口是否被占用
-3. 尝试重启微信和调试服务器
+特点：
+
+- 只附加主 `WeChatAppEx` 进程
+- 默认开启 scene rewrite
+- 默认开启 CDP filter patch
+- 默认关闭 resource cache patch
+- 目标是先保证小程序不闪退，再保证调试链可用
+
+### Full mode
+
+```bash
+yarn start:full
+```
+
+特点：
+
+- 会启用更激进的 patch
+- 适合排查兼容性或做偏移研究
+- 不建议作为日常长期方案
+
+## Runtime flags
+
+`src/index.js` 支持以下开关：
+
+- `--attach-all`：附加所有匹配到的 `WeChatAppEx` 进程
+- `--patch-resource-cache`：启用 resource cache patch
+- `--no-cdp-filter`：禁用 CDP filter patch
+- `--no-scene-rewrite`：禁用 scene rewrite
+- `--verbose-hook`：输出更详细 hook 日志
+- `--unsafe`：关闭稳定模式默认值
+
+对应环境变量：
+
+- `WMPF_SAFE_MODE`
+- `WMPF_ATTACH_ALL`
+- `WMPF_PATCH_RESOURCE_CACHE`
+- `WMPF_PATCH_CDP_FILTER`
+- `WMPF_REWRITE_SCENE`
+- `WMPF_VERBOSE_HOOK`
+
+## Validation tools
+
+协议级验证脚本已经整理到 `tools/`：
+
+- `tools/cdp_probe.js`：基础连通性、脚本抓取、请求抓取、DOM/console 注入
+- `tools/cdp_advanced_probe.js`：断点、请求拦截、DOM 覆盖层、console 联动
+- `tools/cdp_live_validation.js`：偏实战的 live validation 方案
+
+命令：
+
+```bash
+yarn probe:basic
+yarn probe:advanced
+yarn probe:live
+```
+
+详见 `docs/VALIDATION.md`。
+
+## Troubleshooting
+
+### 打得开 DevTools，但小程序会闪退
+
+优先怀疑以下问题：
+
+- 使用了过于激进的 patch
+- 在小程序冷启动、无缓存时就开始 hook
+- 附加到了不该附加的 `WeChatAppEx --type=` 子进程
+- 同时开了多个 DevTools 客户端，导致调试链压力过大
+
+先改回稳定流程：
+
+1. 关掉多余的 `devtools://` 标签页
+2. 完全退出微信和本工具
+3. 正常打开一次目标小程序
+4. 再执行 `yarn start:stable`
+
+### 连接上了，但当前上下文没有 `wx`
+
+这通常说明你连到的是 `page-frame.html / AppIndex / WebView` 层，而不是 `AppService` 逻辑层。
 
 ### 版本不支持
 
-如果提示版本不支持，说明当前 WeChatAppEx 版本还没有对应的配置文件。你可以：
-1. 提交 Issue 请求添加新版本支持(我懒，不一定会去更新)
-2. 请查看[chain00x/WMPFDebugger-arm](https://github.com/chain00x/WMPFDebugger-arm)项目内的方法
-3. 赞助催我更新
-4. 看我B站视频[macos打开小程序调试控制台找偏移方法](https://www.bilibili.com/video/BV1gMqfBkEn8)
+如果没有对应偏移配置，需要自己补版本配置文件。可参考：
 
+- `evi0s/WMPFDebugger` 的版本适配思路
+- `chain00x/WMPFDebugger-arm` 的 mac 偏移经验
+- 本仓库现有 `frida/config/addresses.*.json`
 
-## 致谢
+## Repository layout
 
-- [evi0s/WMPFDebugger](https://github.com/evi0s/WMPFDebugger) - Windows 版本
-- [chain00x/WMPFDebugger-arm](https://github.com/chain00x/WMPFDebugger-arm) - macOS ARM 版本适配
+```text
+WMPFDebugger-mac/
+├── docs/
+│   ├── FORK_NOTES.md
+│   ├── STABLE_MODE.md
+│   └── VALIDATION.md
+├── frida/
+│   ├── config/
+│   └── hook.js
+├── src/
+│   ├── index.js
+│   └── third-party/
+├── tools/
+│   ├── cdp_probe.js
+│   ├── cdp_advanced_probe.js
+│   └── cdp_live_validation.js
+├── package.json
+└── README.md
+```
 
-## 许可证
+## Disclaimer
 
-本项目采用 GPL-2.0 许可证开源。
-
-## 免责声明
-
-**本库只能作为学习用途，造成的任何问题与本库开发者无关，如侵犯到你的权益，请联系删除**
-
-该程序以 GPLv2 许可证开源，参考许可证第十一及十二条：
-
-本程序为免费授权，故在适用法律范围内不提供品质担保。除非另作书面声明，版权持有人及其他程式提供者"概"不提供任何显式或隐式的品质担保，品质担保所指包括而不仅限于有经济价值和适合特定用途的保证。全部风险，如程序的质量和性能问题，皆由你承担。若程序出现缺陷，你将承担所有必要的修复和更正服务的费用。
-
-除非适用法律或书面协议要求，任何版权持有人或本程序按本协议可能存在的第三方修改和再发布者，都不对你的损失负有责任，包括由于使用或者不能使用本程序造成的任何一般的、特殊的、偶发的或重大的损失（包括而不仅限于数据丢失、数据失真、你或第三方的后续损失、其他程序无法与本程序协同运作），即使那些人声称会对此负责。
-
-此外，在 `src/third-party` 中，所有代码从微信开发者工具提取，因此腾讯控股有限公司拥有对该代码的所有版权。
+仅供学习和授权环境下的本地研究使用。使用本项目产生的任何风险由使用者自行承担。

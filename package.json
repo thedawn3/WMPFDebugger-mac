@@ -4,6 +4,14 @@
   "main": "src/index.js",
   "license": "GPL-2.0-only",
   "author": "evi0s",
+  "scripts": {
+    "start": "node src/index.js",
+    "start:stable": "WMPF_SAFE_MODE=1 node src/index.js",
+    "start:full": "WMPF_SAFE_MODE=0 WMPF_PATCH_RESOURCE_CACHE=1 WMPF_ATTACH_ALL=1 node src/index.js --attach-all",
+    "probe:basic": "node tools/cdp_probe.js",
+    "probe:advanced": "node tools/cdp_advanced_probe.js",
+    "probe:live": "node tools/cdp_live_validation.js"
+  },
   "dependencies": {
     "frida": "^17.3.2",
     "protobufjs": "^7.5.4",

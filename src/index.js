@@ -31,6 +31,40 @@ let debugWSS = null;
 let proxyWSS = null;
 let fridaSessions = [];
 
+const argv = process.argv.slice(2);
+const hasFlag = (flag) => argv.includes(flag);
+const envFlag = (name, defaultValue = false) => {
+    const raw = process.env[name];
+    if (raw === undefined) return defaultValue;
+    return ["1", "true", "yes", "on"].includes(String(raw).toLowerCase());
+};
+
+const runtimeOptions = (() => {
+    const safeMode = hasFlag("--unsafe") ? false : envFlag("WMPF_SAFE_MODE", true);
+    const patchResourceCache = hasFlag("--patch-resource-cache")
+        ? true
+        : envFlag("WMPF_PATCH_RESOURCE_CACHE", safeMode ? false : true);
+    const patchCDPFilter = hasFlag("--no-cdp-filter")
+        ? false
+        : envFlag("WMPF_PATCH_CDP_FILTER", true);
+    const rewriteScene = hasFlag("--no-scene-rewrite")
+        ? false
+        : envFlag("WMPF_REWRITE_SCENE", true);
+
+    return {
+        safeMode,
+        attachAll: hasFlag("--attach-all") || envFlag("WMPF_ATTACH_ALL", false),
+        patchCDPFilter,
+        patchResourceCache,
+        rewriteScene,
+        verboseHook: hasFlag("--verbose-hook") || envFlag("WMPF_VERBOSE_HOOK", false),
+    };
+})();
+
+const VERSION_ALIASES = {
+    "34371": "18788",
+};
+
 const debug_server = () => {
     const wss = new WebSocket.Server({ port: DEBUG_PORT });
     console.log(`[server] debug server running on ws://localhost:${DEBUG_PORT}`);
@@ -143,24 +177,50 @@ const proxy_server = () => {
     return wss; // 返回实例以便后续管理
 };
 
-// 动态获取 WeChatAppEx 进程 PID 的函数
-const getWeChatAppExPID = () => {
+// 动态获取 WeChatAppEx 主进程的函数
+const getWeChatAppExProcesses = (attachAll = false) => {
     try {
-        // 注意：路径可能需要根据你的实际安装位置调整
-        const command = `pgrep -f '/MacOS/WeChatAppEx.app/Contents/MacOS/WeChatAppEx'`;
-        const output = execSync(command, { encoding: "utf-8" }).trim();
-        const pids = output
-            .split("\n")
-            .map((pid) => parseInt(pid.trim(), 10))
-            .filter((pid) => !isNaN(pid));
+        const marker = "/MacOS/WeChatAppEx.app/Contents/MacOS/WeChatAppEx";
+        const output = execSync("ps -axo pid=,command=", {
+            encoding: "utf-8",
+        }).trim();
 
-        if (pids.length === 0) {
+        const rows = output
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map((line) => {
+                const match = line.match(/^(\d+)\s+(.*)$/);
+                if (!match) return null;
+                return {
+                    pid: Number(match[1]),
+                    command: match[2],
+                };
+            })
+            .filter(Boolean)
+            .filter((row) => row.command.includes(marker));
+
+        if (rows.length === 0) {
             throw new Error("No WeChatAppEx processes found");
         }
 
-        // 返回所有找到的 PID
-        console.log(`[frida] Found WeChatAppEx PIDs: ${pids.join(", ")}`);
-        return pids;
+        const primaryRows = rows.filter((row) => !row.command.includes(" --type="));
+        const selected = attachAll
+            ? rows
+            : primaryRows.length > 0
+              ? primaryRows
+              : [rows[0]];
+
+        console.log(
+            `[frida] Selected WeChatAppEx process(es): ${selected
+                .map((row) => row.pid)
+                .join(", ")}`
+        );
+        selected.forEach((row) => {
+            console.log(`[frida]   pid=${row.pid} cmd=${row.command}`);
+        });
+
+        return selected;
     } catch (error) {
         console.error(`[frida] Error getting WeChatAppEx PID: ${error}`);
         throw error;
@@ -173,11 +233,25 @@ const getWeChatAppExVersion = () => {
     try {
         const command = `defaults read /Applications/WeChat.app/Contents/MacOS/WeChatAppEx.app/Contents/Info.plist CFBundleVersion`;
         const output = execSync(command, { encoding: 'utf-8' }).trim();
-        const version = output.split('.')[1];
-        if (!version || isNaN(Number(version))) {
-            throw new Error(`Invalid version: ${output}`);
+        const parts = output.split('.');
+        const candidates = [];
+
+        if (parts.length > 1) {
+            candidates.push(parts[1]);
         }
-        return version;
+        candidates.push(output);
+
+        for (const candidate of candidates) {
+            if (candidate && !isNaN(Number(candidate))) {
+                if (VERSION_ALIASES[candidate]) {
+                    console.log(`[frida] 版本别名映射: ${candidate} -> ${VERSION_ALIASES[candidate]}`);
+                    return VERSION_ALIASES[candidate];
+                }
+                return candidate;
+            }
+        }
+
+        throw new Error(`Invalid version: ${output}`);
     } catch (error) {
         console.log(`[frida] 获取版本失败，使用默认版本 17078`);
         return '17078';
@@ -189,8 +263,8 @@ const frida_server = async () => {
     const fridaModule = await import("frida");
     const localDevice = await fridaModule.getLocalDevice();
 
-    // 获取所有 WeChatAppEx 进程的 PID
-    const pids = getWeChatAppExPID();
+    // 获取目标 WeChatAppEx 进程
+    const targets = getWeChatAppExProcesses(runtimeOptions.attachAll);
     const wmpfVersion = getWeChatAppExVersion()
 
     // 查找 hook 脚本
@@ -220,13 +294,18 @@ const frida_server = async () => {
     }
 
     if (scriptContent && configContent) {
-        scriptContent = scriptContent.replace('@@CONFIG@@', configContent)
-      }
+        scriptContent = scriptContent.replace("@@CONFIG@@", configContent);
+        scriptContent = scriptContent.replace(
+            "@@SETTINGS@@",
+            JSON.stringify(runtimeOptions).replace(/`/g, "\\`")
+        );
+    }
 
     // 附加到所有找到的进程并加载脚本
     const sessionsAndScripts = [];
     
-    for (const pid of pids) {
+    for (const target of targets) {
+        const pid = target.pid;
         try {
             console.log(`[frida] Attaching to WeChatAppEx process PID: ${pid}`);
             // 附加到进程
@@ -367,6 +446,9 @@ const shutdown = async () => {
 
 const main = async () => {
     try {
+        console.log(
+            `[config] safeMode=${runtimeOptions.safeMode} attachAll=${runtimeOptions.attachAll} rewriteScene=${runtimeOptions.rewriteScene} patchCDPFilter=${runtimeOptions.patchCDPFilter} patchResourceCache=${runtimeOptions.patchResourceCache} verboseHook=${runtimeOptions.verboseHook}`
+        );
         // 启动服务器并保存实例引用
         debugWSS = debug_server();
         proxyWSS = proxy_server();

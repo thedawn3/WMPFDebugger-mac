@@ -1,4 +1,26 @@
-const VERBOSE = false
+const DEFAULT_SETTINGS = {
+  safeMode: true,
+  patchCDPFilter: true,
+  patchResourceCache: false,
+  rewriteScene: true,
+  verboseHook: false
+}
+
+const parseSettings = () => {
+  const rawSettings = `@@SETTINGS@@`
+  if (rawSettings.includes('@@')) {
+    return DEFAULT_SETTINGS
+  }
+  try {
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(rawSettings) }
+  } catch (error) {
+    console.error('[frida] parse settings failed:', error)
+    return DEFAULT_SETTINGS
+  }
+}
+
+const SETTINGS = parseSettings()
+const VERBOSE = SETTINGS.verboseHook === true
 
 const getMainModule = () => {
   return Process.findModuleByName('WeChatAppEx Framework')
@@ -42,6 +64,9 @@ const patchCDPFilter = (base, offset) => {
 }
 
 const onLoadStartHook = (a1, structOffset) => {
+  if (!SETTINGS.rewriteScene) {
+    return
+  }
   // 结构体偏移处理（兼容 ARM64 和 x64）
   // structOffset 从配置文件读取，不同版本和架构可能不同
   try {
@@ -195,11 +220,22 @@ const main = () => {
     `[frida] Loaded config for version: ${config.Version} (arch: ${config.__arch || Process.arch})`
   )
   console.log(`[frida] Module base: ${mainModule.base}`)
+  console.log(`[frida] Runtime settings: ${JSON.stringify(SETTINGS)}`)
 
   interceptorLoadStart(mainModule.base, config.LoadStartHookOffset)
   interceptorLoadStart2(mainModule.base, config.LoadStartHookOffset2, config.StructOffset)
-  patchResourceCachePolicy(mainModule.base, config.ResourceCachePolicyHookOffset)
-  patchCDPFilter(mainModule.base, config.CDPFilterHookOffset)
+
+  if (SETTINGS.patchCDPFilter) {
+    patchCDPFilter(mainModule.base, config.CDPFilterHookOffset)
+  } else {
+    console.log('[frida] Skip CDP filter patch')
+  }
+
+  if (SETTINGS.patchResourceCache) {
+    patchResourceCachePolicy(mainModule.base, config.ResourceCachePolicyHookOffset)
+  } else {
+    console.log('[frida] Skip resource cache patch')
+  }
 }
 
 main()
