@@ -19,11 +19,11 @@ uses:
 
 That mapping is implemented in `src/index.js`.
 
-## Current verified mini program target
+## Current verified local target
 
 The currently verified local CDP bridge tests were run against a real mini
 program business page on this machine. The repository intentionally does not
-record that mini program's appid.
+record any target-specific metadata for that local sample.
 
 ## Verification notes
 

@@ -33,8 +33,8 @@ These tools were validated against:
 
 - WeChat `4.1.7 (34371)`
 
-The exact mini program appid used during local validation is intentionally not
-recorded in the repository.
+The exact local test target metadata is intentionally not recorded in the
+repository.
 
 The tools are reusable across other mini programs, but output shape will vary
 depending on whether the active CDP target is only WebView or reaches deeper
