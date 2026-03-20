@@ -103,6 +103,8 @@ make up-stable-open
 - `WeChatAppEx` 是否就绪
 - 是否检测到 `WeApp` 渲染进程
 - `9421` / `62000` 端口是否被旧进程占用
+- `62000` 是否真正进入可连接状态
+- 运行期间是否生成新的 `WeApp` 崩溃日志
 
 4. 看到下面这类输出，说明 hook 已经挂上：
 
@@ -122,6 +124,7 @@ make up-stable-open
 ```text
 [doctor] Starting hook in full mode
 [config] safeMode=false attachAll=true forceLoadStartFlag=true rewriteScene=true patchCDPFilter=true patchResourceCache=true verboseHook=false
+[doctor] CDP bridge is ready on ws://127.0.0.1:62000
 ```
 
 5. 如果随后检测到小程序页面打开，控制台还会继续提示：
@@ -129,6 +132,12 @@ make up-stable-open
 ```text
 [doctor] WeApp renderer detected: WeChat=1 WeChatAppEx=1 Helpers=... WeApp=1
 [doctor] Chrome DevTools URL: devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
+```
+
+如果运行期间小程序闪退，控制台也会直接提示最新的崩溃文件路径，例如：
+
+```text
+[doctor] Detected new WeApp crash log: /Users/you/Library/Logs/DiagnosticReports/WeApp-2026-03-20-104616.ips
 ```
 
 6. 再用 `Google Chrome` 打开：

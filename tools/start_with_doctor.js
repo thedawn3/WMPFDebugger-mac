@@ -9,6 +9,10 @@ const projectRoot = path.join(__dirname, "..");
 const entrypoint = path.join(projectRoot, "src", "index.js");
 const DEBUG_PORT = 9421;
 const CDP_PORT = 62000;
+const DIAGNOSTIC_DIR = path.join(
+    process.env.HOME || "",
+    "Library/Logs/DiagnosticReports"
+);
 const REQUIRED_MODULES = ["ws", "protobufjs", "frida"];
 const AUTO_OPEN_DEVTOOLS =
     ["1", "true", "yes", "on"].includes(
@@ -119,6 +123,24 @@ const portIsFree = (port) =>
         server.listen(port, "127.0.0.1");
     });
 
+const portAcceptsConnection = (port) =>
+    new Promise((resolve) => {
+        const socket = net.createConnection({ host: "127.0.0.1", port });
+        let settled = false;
+
+        const finish = (value) => {
+            if (settled) return;
+            settled = true;
+            socket.destroy();
+            resolve(value);
+        };
+
+        socket.setTimeout(700);
+        socket.once("connect", () => finish(true));
+        socket.once("timeout", () => finish(false));
+        socket.once("error", () => finish(false));
+    });
+
 const ensurePortsFree = async () => {
     const debugPortFree = await portIsFree(DEBUG_PORT);
     const cdpPortFree = await portIsFree(CDP_PORT);
@@ -187,6 +209,28 @@ const printNextHint = (state) => {
         log(`WeChat is running, but no WeApp renderer detected yet: ${formatState(state)}`);
         log("Please open the target mini program business page in WeChat.");
     }
+};
+
+const findNewestWeAppCrash = () => {
+    if (!fs.existsSync(DIAGNOSTIC_DIR)) {
+        return null;
+    }
+
+    const files = fs
+        .readdirSync(DIAGNOSTIC_DIR)
+        .filter((name) => /^WeApp-.*\.(ips|crash)$/.test(name))
+        .map((name) => {
+            const fullPath = path.join(DIAGNOSTIC_DIR, name);
+            const stat = fs.statSync(fullPath);
+            return {
+                name,
+                fullPath,
+                mtimeMs: stat.mtimeMs,
+            };
+        })
+        .sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+    return files[0] || null;
 };
 
 let devtoolsOpened = false;
@@ -259,10 +303,32 @@ const startHook = async () => {
     let lastWeAppCount = ready.weAppCount;
     let lastAppExMainCount = ready.appExMainCount;
     let childExited = false;
+    let cdpReadyLogged = false;
+    let debugReadyLogged = false;
+    const startupCrashBaseline = findNewestWeAppCrash();
+    let seenCrashPath = startupCrashBaseline?.fullPath || null;
 
     const timer = setInterval(() => {
         if (childExited) return;
         try {
+            if (!debugReadyLogged) {
+                portAcceptsConnection(DEBUG_PORT).then((ok) => {
+                    if (!childExited && ok && !debugReadyLogged) {
+                        debugReadyLogged = true;
+                        log(`Debug bridge is reachable on ws://127.0.0.1:${DEBUG_PORT}`);
+                    }
+                });
+            }
+
+            if (!cdpReadyLogged) {
+                portAcceptsConnection(CDP_PORT).then((ok) => {
+                    if (!childExited && ok && !cdpReadyLogged) {
+                        cdpReadyLogged = true;
+                        log(`CDP bridge is ready on ws://127.0.0.1:${CDP_PORT}`);
+                    }
+                });
+            }
+
             const state = getProcessState();
             if (
                 state.weAppCount !== lastWeAppCount ||
@@ -279,6 +345,17 @@ const startHook = async () => {
                 } else {
                     log(`Waiting for mini program page: ${formatState(state)}`);
                 }
+            }
+
+            const latestCrash = findNewestWeAppCrash();
+            if (
+                latestCrash &&
+                latestCrash.fullPath !== seenCrashPath &&
+                (!startupCrashBaseline ||
+                    latestCrash.mtimeMs > startupCrashBaseline.mtimeMs)
+            ) {
+                seenCrashPath = latestCrash.fullPath;
+                log(`Detected new WeApp crash log: ${latestCrash.fullPath}`);
             }
         } catch (error) {
             log(`Process monitor warning: ${error.message}`);
