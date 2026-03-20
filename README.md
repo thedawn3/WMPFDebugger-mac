@@ -72,6 +72,43 @@ defaults read /Applications/WeChat.app/Contents/MacOS/WeChatAppEx.app/Contents/I
 yarn
 ```
 
+## Quick start
+
+如果你只是想先把 hook 挂起来并确认是否工作，按这个最短流程做：
+
+1. 启动微信，并先随便打开一次目标小程序
+2. 在仓库目录执行：
+
+```bash
+cd /Users/thedawn/codex-work/playground/wechat-devtools-417/WMPFDebugger-mac-fork
+yarn start:stable
+```
+
+3. 看到下面这类输出，说明 hook 已经挂上：
+
+```text
+[server] debug server running on ws://localhost:9421
+[server] proxy server running on ws://localhost:62000
+[frida] Selected WeChatAppEx process(es): ...
+[frida] Loaded script from: ...
+[frida] Successfully attached to PID ...
+```
+
+4. 再回到微信里打开目标小程序业务页
+5. 用 `Google Chrome` 打开：
+
+```text
+devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
+```
+
+如果只是要验证桥有没有活着，先不要跑高压测试，优先执行：
+
+```bash
+yarn probe:basic
+```
+
+如果终端里没有出现 `Successfully attached to PID`，或者直接报 `Failed to attach`、`hook script not found`、`No WeChatAppEx processes found`，先不要继续点小程序，直接看终端报错。
+
 ## Recommended stable workflow
 
 先按这个流程用，不要一上来就开 `start:compat` 或 `start:full`。
