@@ -81,7 +81,7 @@ yarn
 
 ```bash
 cd /Users/thedawn/codex-work/playground/wechat-devtools-417/WMPFDebugger-mac-fork
-yarn start:stable
+make stable
 ```
 
 3. 看到下面这类输出，说明 hook 已经挂上：
@@ -104,10 +104,21 @@ devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
 如果只是要验证桥有没有活着，先不要跑高压测试，优先执行：
 
 ```bash
-yarn probe:basic
+make probe-basic
 ```
 
 如果终端里没有出现 `Successfully attached to PID`，或者直接报 `Failed to attach`、`hook script not found`、`No WeChatAppEx processes found`，先不要继续点小程序，直接看终端报错。
+
+如果你不想记 `yarn` 命令，也可以直接用这些快捷命令：
+
+```bash
+make stable
+make compat
+make full
+make probe-basic
+make probe-advanced
+make probe-live
+```
 
 ## Recommended stable workflow
 
@@ -119,7 +130,7 @@ yarn probe:basic
 4. 回到仓库执行：
 
 ```bash
-yarn start:stable
+make stable
 ```
 
 5. 再次打开目标小程序，进入真正的业务页面，不要停在“小程序列表/最近使用”页
@@ -144,7 +155,7 @@ yarn probe:basic
 ### Stable mode (default)
 
 ```bash
-yarn start:stable
+make stable
 ```
 
 特点：
@@ -159,7 +170,7 @@ yarn start:stable
 ### Compat mode
 
 ```bash
-yarn start:compat
+make compat
 ```
 
 特点：
@@ -174,7 +185,7 @@ yarn start:compat
 ### Full mode
 
 ```bash
-yarn start:full
+make full
 ```
 
 特点：
