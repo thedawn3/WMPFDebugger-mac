@@ -10,9 +10,11 @@
     "start:compat": "WMPF_SAFE_MODE=1 WMPF_FORCE_LOADSTART_FLAG=1 WMPF_REWRITE_SCENE=1 WMPF_PATCH_CDP_FILTER=1 node src/index.js --force-loadstart-flag",
     "start:full": "WMPF_SAFE_MODE=0 WMPF_FORCE_LOADSTART_FLAG=1 WMPF_REWRITE_SCENE=1 WMPF_PATCH_CDP_FILTER=1 WMPF_PATCH_RESOURCE_CACHE=1 WMPF_ATTACH_ALL=1 node src/index.js --attach-all --force-loadstart-flag",
     "start:guided": "node tools/start_with_doctor.js stable",
+    "start:guided:open": "node tools/start_with_doctor.js stable --open-devtools",
     "start:guided:compat": "node tools/start_with_doctor.js compat",
     "start:guided:full": "node tools/start_with_doctor.js full",
     "doctor": "node tools/start_with_doctor.js doctor",
+    "open:devtools": "node tools/open_devtools.js",
     "probe:basic": "node tools/cdp_probe.js",
     "probe:advanced": "node tools/cdp_advanced_probe.js",
     "probe:live": "node tools/cdp_live_validation.js"

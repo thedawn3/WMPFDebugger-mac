@@ -84,6 +84,12 @@ cd /Users/thedawn/codex-work/playground/wechat-devtools-417/WMPFDebugger-mac-for
 make up
 ```
 
+如果你希望检测到 `WeApp` 后自动拉起 Chrome DevTools，也可以直接用：
+
+```bash
+make up-open
+```
+
 3. 控制台会先自动检查：
 
 - 微信是否已启动
@@ -117,6 +123,12 @@ make up
 devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
 ```
 
+或者直接执行：
+
+```bash
+make open-devtools
+```
+
 如果只是要验证桥有没有活着，先不要跑高压测试，优先执行：
 
 ```bash
@@ -129,10 +141,12 @@ make probe-basic
 
 ```bash
 make up
+make up-open
 make stable
 make compat
 make full
 make doctor
+make open-devtools
 make probe-basic
 make probe-advanced
 make probe-live

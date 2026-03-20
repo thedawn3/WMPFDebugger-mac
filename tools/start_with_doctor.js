@@ -10,6 +10,10 @@ const entrypoint = path.join(projectRoot, "src", "index.js");
 const DEBUG_PORT = 9421;
 const CDP_PORT = 62000;
 const REQUIRED_MODULES = ["ws", "protobufjs", "frida"];
+const AUTO_OPEN_DEVTOOLS =
+    ["1", "true", "yes", "on"].includes(
+        String(process.env.WMPF_AUTO_OPEN_DEVTOOLS || "").toLowerCase()
+    ) || process.argv.includes("--open-devtools");
 
 const mode = process.argv[2] || "stable";
 
@@ -185,6 +189,24 @@ const printNextHint = (state) => {
     }
 };
 
+let devtoolsOpened = false;
+
+const tryOpenDevTools = () => {
+    if (devtoolsOpened || !AUTO_OPEN_DEVTOOLS) {
+        return;
+    }
+
+    try {
+        execFileSync(process.execPath, [path.join(__dirname, "open_devtools.js")], {
+            cwd: projectRoot,
+            stdio: "inherit",
+        });
+        devtoolsOpened = true;
+    } catch (error) {
+        log(`Auto-open DevTools failed: ${error.message}`);
+    }
+};
+
 const runDoctorOnly = async () => {
     ensureWeChatInstalled();
     const state = getProcessState();
@@ -197,6 +219,9 @@ const runDoctorOnly = async () => {
         log("No WeApp renderer detected. Open a mini program business page.");
     } else {
         log("WeApp renderer detected. Environment looks ready for hook + DevTools.");
+        if (AUTO_OPEN_DEVTOOLS) {
+            log("Auto-open DevTools is enabled.");
+        }
     }
 };
 
@@ -218,6 +243,9 @@ const startHook = async () => {
     const ready = getProcessState();
     log(`Starting hook in ${preset.label} mode`);
     printNextHint(ready);
+    if (ready.weAppCount > 0) {
+        tryOpenDevTools();
+    }
 
     const child = spawn(process.execPath, [entrypoint, ...preset.args], {
         cwd: projectRoot,
@@ -247,6 +275,7 @@ const startHook = async () => {
                     log(
                         `Chrome DevTools URL: devtools://devtools/bundled/inspector.html?ws=127.0.0.1:${CDP_PORT}`
                     );
+                    tryOpenDevTools();
                 } else {
                     log(`Waiting for mini program page: ${formatState(state)}`);
                 }
