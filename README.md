@@ -76,7 +76,7 @@ yarn
 
 如果你只是想先把 hook 挂起来并确认是否工作，按这个最短流程做：
 
-1. 如果微信还没启动，`make up` 会尝试自动拉起；更稳的做法仍然是先手动打开一次目标小程序
+1. 默认情况下，`make up` 会走全功能模式；如果微信还没启动，它也会尝试自动拉起
 2. 在仓库目录执行：
 
 ```bash
@@ -88,6 +88,13 @@ make up
 
 ```bash
 make up-open
+```
+
+如果你想改回更保守的稳定模式，再用：
+
+```bash
+make up-stable
+make up-stable-open
 ```
 
 3. 控制台会先自动检查：
@@ -108,6 +115,13 @@ make up-open
 [frida] Selected WeChatAppEx process(es): ...
 [frida] Loaded script from: ...
 [frida] Successfully attached to PID ...
+```
+
+默认 `make up` 路径里，还会看到 full 模式参数：
+
+```text
+[doctor] Starting hook in full mode
+[config] safeMode=false attachAll=true forceLoadStartFlag=true rewriteScene=true patchCDPFilter=true patchResourceCache=true verboseHook=false
 ```
 
 5. 如果随后检测到小程序页面打开，控制台还会继续提示：
@@ -142,6 +156,8 @@ make probe-basic
 ```bash
 make up
 make up-open
+make up-stable
+make up-stable-open
 make stable
 make compat
 make full
@@ -152,9 +168,9 @@ make probe-advanced
 make probe-live
 ```
 
-## Recommended stable workflow
+## Stable fallback workflow
 
-先按这个流程用，不要一上来就开 `start:compat` 或 `start:full`。
+如果默认全功能模式下出现闪退，再回退到这套稳定流程。
 
 1. 完全退出微信和本工具
 2. 正常启动微信
@@ -178,13 +194,13 @@ devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
 make probe-basic
 ```
 
-确认 `make up` / `make stable` 本身不闪退后，再考虑 `make probe-advanced` 或 `make probe-live`。
+确认 `make up-stable` / `make stable` 本身不闪退后，再考虑 `make probe-advanced` 或 `make probe-live`。
 
 更详细的稳定使用说明见 `docs/STABLE_MODE.md`。
 
 ## Runtime modes
 
-### Stable mode (default)
+### Stable mode
 
 ```bash
 make stable
