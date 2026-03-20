@@ -104,6 +104,7 @@ make up-stable-open
 - 是否检测到 `WeApp` 渲染进程
 - `9421` / `62000` 端口是否被旧进程占用
 - `62000` 是否真正进入可连接状态
+- `62000` 是否能完成一次最小 WebSocket / CDP 探测
 - 运行期间是否生成新的 `WeApp` 崩溃日志
 
 4. 看到下面这类输出，说明 hook 已经挂上：
@@ -125,6 +126,7 @@ make up-stable-open
 [doctor] Starting hook in full mode
 [config] safeMode=false attachAll=true forceLoadStartFlag=true rewriteScene=true patchCDPFilter=true patchResourceCache=true verboseHook=false
 [doctor] CDP bridge is ready on ws://127.0.0.1:62000
+[doctor] CDP responded: {"id":1,"result":{}}
 ```
 
 5. 如果随后检测到小程序页面打开，控制台还会继续提示：
@@ -138,6 +140,7 @@ make up-stable-open
 
 ```text
 [doctor] Detected new WeApp crash log: /Users/you/Library/Logs/DiagnosticReports/WeApp-2026-03-20-104616.ips
+[doctor] Crash summary: EXC_BAD_ACCESS / SIGSEGV / CrRendererMain
 ```
 
 6. 再用 `Google Chrome` 打开：

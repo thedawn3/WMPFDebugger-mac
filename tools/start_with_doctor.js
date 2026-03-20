@@ -59,6 +59,8 @@ const log = (message) => {
     console.log(`[doctor] ${message}`);
 };
 
+const lazyLoadWs = () => require("ws");
+
 const readProcessList = () => {
     const output = execFileSync("ps", ["-axo", "pid=,command="], {
         encoding: "utf-8",
@@ -233,6 +235,120 @@ const findNewestWeAppCrash = () => {
     return files[0] || null;
 };
 
+const summarizeCrashFile = (fullPath) => {
+    try {
+        const raw = fs.readFileSync(fullPath, "utf-8");
+        const lines = raw.split(/\r?\n/);
+        let data = null;
+
+        for (const candidate of [raw, lines.slice(1).join("\n")]) {
+            try {
+                data = JSON.parse(candidate);
+                break;
+            } catch (_) {
+                // ignore
+            }
+        }
+
+        if (data) {
+            const exceptionType = data?.exception?.type || "unknown";
+            const signal = data?.exception?.signal || "unknown";
+            const faultingThread = data?.faultingThread;
+            const thread =
+                Number.isInteger(faultingThread) && data?.threads?.[faultingThread]
+                    ? data.threads[faultingThread]
+                    : null;
+            const threadName = thread?.name || `thread ${faultingThread ?? "unknown"}`;
+            return `${exceptionType} / ${signal} / ${threadName}`;
+        }
+
+        const exceptionLine =
+            lines.find((line) => /Exception Type:/i.test(line))?.trim() || "Exception Type: unknown";
+        const signalLine =
+            lines.find((line) => /Exception Codes:|Signal:/i.test(line))?.trim() || "Signal: unknown";
+        return `${exceptionLine}; ${signalLine}`;
+    } catch (error) {
+        return `summary unavailable: ${error.message}`;
+    }
+};
+
+const probeCdpWebSocket = () =>
+    new Promise((resolve) => {
+        let settled = false;
+        let responded = false;
+        let opened = false;
+        const WebSocket = lazyLoadWs();
+        const ws = new WebSocket(`ws://127.0.0.1:${CDP_PORT}`);
+
+        const finish = (result) => {
+            if (settled) return;
+            settled = true;
+            try {
+                ws.close();
+            } catch (_) {
+                // ignore
+            }
+            resolve(result);
+        };
+
+        const timeout = setTimeout(() => {
+            finish({
+                opened,
+                responded,
+                message: opened
+                    ? "WebSocket opened but no CDP response yet"
+                    : "WebSocket did not open",
+            });
+        }, 1800);
+
+        ws.on("open", () => {
+            opened = true;
+            try {
+                ws.send(JSON.stringify({ id: 1, method: "Runtime.enable" }));
+            } catch (error) {
+                clearTimeout(timeout);
+                finish({
+                    opened: true,
+                    responded: false,
+                    message: `WebSocket opened but send failed: ${error.message}`,
+                });
+            }
+        });
+
+        ws.on("message", (data) => {
+            responded = true;
+            clearTimeout(timeout);
+            const text = String(data);
+            finish({
+                opened: true,
+                responded: true,
+                message: `CDP responded: ${text.slice(0, 160)}`,
+            });
+        });
+
+        ws.on("error", (error) => {
+            clearTimeout(timeout);
+            finish({
+                opened,
+                responded: false,
+                message: `CDP probe error: ${error.message}`,
+            });
+        });
+
+        ws.on("close", () => {
+            if (!settled) {
+                clearTimeout(timeout);
+                finish({
+                    opened,
+                    responded,
+                    message: opened
+                        ? "WebSocket closed before CDP response"
+                        : "WebSocket closed before open",
+                });
+            }
+        });
+    });
+
 let devtoolsOpened = false;
 
 const tryOpenDevTools = () => {
@@ -305,6 +421,8 @@ const startHook = async () => {
     let childExited = false;
     let cdpReadyLogged = false;
     let debugReadyLogged = false;
+    let cdpProbeStarted = false;
+    let cdpProbeLogged = false;
     const startupCrashBaseline = findNewestWeAppCrash();
     let seenCrashPath = startupCrashBaseline?.fullPath || null;
 
@@ -325,6 +443,16 @@ const startHook = async () => {
                     if (!childExited && ok && !cdpReadyLogged) {
                         cdpReadyLogged = true;
                         log(`CDP bridge is ready on ws://127.0.0.1:${CDP_PORT}`);
+                    }
+                });
+            }
+
+            if (cdpReadyLogged && !cdpProbeStarted) {
+                cdpProbeStarted = true;
+                probeCdpWebSocket().then((result) => {
+                    if (!childExited && !cdpProbeLogged) {
+                        cdpProbeLogged = true;
+                        log(result.message);
                     }
                 });
             }
@@ -356,6 +484,7 @@ const startHook = async () => {
             ) {
                 seenCrashPath = latestCrash.fullPath;
                 log(`Detected new WeApp crash log: ${latestCrash.fullPath}`);
+                log(`Crash summary: ${summarizeCrashFile(latestCrash.fullPath)}`);
             }
         } catch (error) {
             log(`Process monitor warning: ${error.message}`);
