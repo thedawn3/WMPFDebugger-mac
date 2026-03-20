@@ -40,11 +40,13 @@ The upstream behavior is effective but aggressive. This fork defaults to a
 stable mode intended to reduce `WeApp` renderer crashes:
 
 - attach only the primary `WeChatAppEx` process by default
-- keep scene rewrite enabled
-- keep CDP filter patch enabled
+- disable loadstart flag patch by default
+- disable scene rewrite by default
+- disable CDP filter patch by default
 - disable resource cache patch by default
 
-The resource cache patch can still be enabled explicitly when needed.
+The more aggressive native rewrites are still available through `start:compat`,
+`start:full`, or explicit runtime flags when needed.
 
 ### 3. Runtime switches were added
 

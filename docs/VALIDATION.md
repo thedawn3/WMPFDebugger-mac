@@ -26,6 +26,9 @@ Run:
 yarn probe:basic
 ```
 
+Use this first. It is the only probe recommended before the bridge is proven
+stable against repeated `WeApp` launches.
+
 ### `tools/cdp_advanced_probe.js`
 
 More aggressive validation:
@@ -42,6 +45,9 @@ Run:
 yarn probe:advanced
 ```
 
+Do not start here while investigating renderer crashes. This probe increases
+reload, breakpoint, interception, and replay pressure.
+
 ### `tools/cdp_live_validation.js`
 
 Live validation script for research and manual runtime work:
@@ -57,6 +63,8 @@ Run:
 ```bash
 yarn probe:live
 ```
+
+Treat this as a research-mode tool, not as a first-line health check.
 
 ## What a good run looks like
 

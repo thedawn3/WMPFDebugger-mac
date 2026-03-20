@@ -46,14 +46,20 @@ const runtimeOptions = (() => {
         : envFlag("WMPF_PATCH_RESOURCE_CACHE", safeMode ? false : true);
     const patchCDPFilter = hasFlag("--no-cdp-filter")
         ? false
-        : envFlag("WMPF_PATCH_CDP_FILTER", true);
+        : envFlag("WMPF_PATCH_CDP_FILTER", safeMode ? false : true);
     const rewriteScene = hasFlag("--no-scene-rewrite")
         ? false
-        : envFlag("WMPF_REWRITE_SCENE", true);
+        : envFlag("WMPF_REWRITE_SCENE", safeMode ? false : true);
+    const forceLoadStartFlag = hasFlag("--no-force-loadstart-flag")
+        ? false
+        : hasFlag("--force-loadstart-flag")
+          ? true
+          : envFlag("WMPF_FORCE_LOADSTART_FLAG", safeMode ? false : true);
 
     return {
         safeMode,
         attachAll: hasFlag("--attach-all") || envFlag("WMPF_ATTACH_ALL", false),
+        forceLoadStartFlag,
         patchCDPFilter,
         patchResourceCache,
         rewriteScene,
@@ -447,7 +453,7 @@ const shutdown = async () => {
 const main = async () => {
     try {
         console.log(
-            `[config] safeMode=${runtimeOptions.safeMode} attachAll=${runtimeOptions.attachAll} rewriteScene=${runtimeOptions.rewriteScene} patchCDPFilter=${runtimeOptions.patchCDPFilter} patchResourceCache=${runtimeOptions.patchResourceCache} verboseHook=${runtimeOptions.verboseHook}`
+            `[config] safeMode=${runtimeOptions.safeMode} attachAll=${runtimeOptions.attachAll} forceLoadStartFlag=${runtimeOptions.forceLoadStartFlag} rewriteScene=${runtimeOptions.rewriteScene} patchCDPFilter=${runtimeOptions.patchCDPFilter} patchResourceCache=${runtimeOptions.patchResourceCache} verboseHook=${runtimeOptions.verboseHook}`
         );
         // 启动服务器并保存实例引用
         debugWSS = debug_server();

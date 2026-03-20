@@ -23,6 +23,12 @@ Run from repo root:
 
 ```bash
 yarn probe:basic
+```
+
+Only after `yarn start:stable` is confirmed not to crash repeatedly, continue
+with:
+
+```bash
 yarn probe:advanced
 yarn probe:live
 ```

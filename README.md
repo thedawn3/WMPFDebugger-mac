@@ -74,7 +74,7 @@ yarn
 
 ## Recommended stable workflow
 
-先按这个流程用，不要一上来就开 full mode。
+先按这个流程用，不要一上来就开 `start:compat` 或 `start:full`。
 
 1. 完全退出微信和本工具
 2. 正常启动微信
@@ -92,12 +92,13 @@ yarn start:stable
 devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
 ```
 
-如果你要做回归验证，而不是人工点 DevTools，直接跑：
+如果你要做回归验证，而不是人工点 DevTools，先跑：
 
 ```bash
 yarn probe:basic
-yarn probe:advanced
 ```
+
+确认 `start:stable` 本身不闪退后，再考虑 `yarn probe:advanced` 或 `yarn probe:live`。
 
 更详细的稳定使用说明见 `docs/STABLE_MODE.md`。
 
@@ -112,10 +113,26 @@ yarn start:stable
 特点：
 
 - 只附加主 `WeChatAppEx` 进程
-- 默认开启 scene rewrite
-- 默认开启 CDP filter patch
+- 默认关闭 loadstart flag patch
+- 默认关闭 scene rewrite
+- 默认关闭 CDP filter patch
 - 默认关闭 resource cache patch
-- 目标是先保证小程序不闪退，再保证调试链可用
+- 目标是先保证小程序不闪退，再逐项恢复调试能力
+
+### Compat mode
+
+```bash
+yarn start:compat
+```
+
+特点：
+
+- 保持只附加主 `WeChatAppEx` 进程
+- 开启 loadstart flag patch
+- 开启 scene rewrite
+- 开启 CDP filter patch
+- 仍然关闭 resource cache patch
+- 适合在 `start:stable` 不崩但调试入口不足时逐步加功能
 
 ### Full mode
 
@@ -134,6 +151,8 @@ yarn start:full
 `src/index.js` 支持以下开关：
 
 - `--attach-all`：附加所有匹配到的 `WeChatAppEx` 进程
+- `--force-loadstart-flag`：启用 loadstart 第二参数强制改写
+- `--no-force-loadstart-flag`：禁用 loadstart 第二参数强制改写
 - `--patch-resource-cache`：启用 resource cache patch
 - `--no-cdp-filter`：禁用 CDP filter patch
 - `--no-scene-rewrite`：禁用 scene rewrite
@@ -144,6 +163,7 @@ yarn start:full
 
 - `WMPF_SAFE_MODE`
 - `WMPF_ATTACH_ALL`
+- `WMPF_FORCE_LOADSTART_FLAG`
 - `WMPF_PATCH_RESOURCE_CACHE`
 - `WMPF_PATCH_CDP_FILTER`
 - `WMPF_REWRITE_SCENE`
@@ -184,6 +204,13 @@ yarn probe:live
 2. 完全退出微信和本工具
 3. 正常打开一次目标小程序
 4. 再执行 `yarn start:stable`
+
+如果 `start:stable` 不闪退但调试能力不足，再按这个顺序逐步加压：
+
+1. `WMPF_PATCH_CDP_FILTER=1 yarn start:stable`
+2. `WMPF_PATCH_CDP_FILTER=1 WMPF_REWRITE_SCENE=1 yarn start:stable`
+3. `WMPF_FORCE_LOADSTART_FLAG=1 WMPF_PATCH_CDP_FILTER=1 WMPF_REWRITE_SCENE=1 yarn start:stable`
+4. 最后才用 `yarn start:compat` 或 `yarn start:full`
 
 ### 连接上了，但当前上下文没有 `wx`
 

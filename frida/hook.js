@@ -1,8 +1,9 @@
 const DEFAULT_SETTINGS = {
   safeMode: true,
-  patchCDPFilter: true,
+  forceLoadStartFlag: false,
+  patchCDPFilter: false,
   patchResourceCache: false,
-  rewriteScene: true,
+  rewriteScene: false,
   verboseHook: false
 }
 
@@ -222,8 +223,17 @@ const main = () => {
   console.log(`[frida] Module base: ${mainModule.base}`)
   console.log(`[frida] Runtime settings: ${JSON.stringify(SETTINGS)}`)
 
-  interceptorLoadStart(mainModule.base, config.LoadStartHookOffset)
-  interceptorLoadStart2(mainModule.base, config.LoadStartHookOffset2, config.StructOffset)
+  if (SETTINGS.forceLoadStartFlag) {
+    interceptorLoadStart(mainModule.base, config.LoadStartHookOffset)
+  } else {
+    console.log('[frida] Skip loadstart flag patch')
+  }
+
+  if (SETTINGS.rewriteScene) {
+    interceptorLoadStart2(mainModule.base, config.LoadStartHookOffset2, config.StructOffset)
+  } else {
+    console.log('[frida] Skip scene rewrite hook')
+  }
 
   if (SETTINGS.patchCDPFilter) {
     patchCDPFilter(mainModule.base, config.CDPFilterHookOffset)
