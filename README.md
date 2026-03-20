@@ -76,17 +76,27 @@ yarn
 
 如果你只是想先把 hook 挂起来并确认是否工作，按这个最短流程做：
 
-1. 启动微信，并先随便打开一次目标小程序
+1. 如果微信还没启动，`make up` 会尝试自动拉起；更稳的做法仍然是先手动打开一次目标小程序
 2. 在仓库目录执行：
 
 ```bash
 cd /Users/thedawn/codex-work/playground/wechat-devtools-417/WMPFDebugger-mac-fork
-make stable
+make up
 ```
 
-3. 看到下面这类输出，说明 hook 已经挂上：
+3. 控制台会先自动检查：
+
+- 微信是否已启动
+- `WeChatAppEx` 是否就绪
+- 是否检测到 `WeApp` 渲染进程
+- `9421` / `62000` 端口是否被旧进程占用
+
+4. 看到下面这类输出，说明 hook 已经挂上：
 
 ```text
+[doctor] Initial process state: WeChat=1 WeChatAppEx=1 Helpers=... WeApp=0
+[doctor] WeChat is running, but no WeApp renderer detected yet
+[doctor] Please open the target mini program business page in WeChat
 [server] debug server running on ws://localhost:9421
 [server] proxy server running on ws://localhost:62000
 [frida] Selected WeChatAppEx process(es): ...
@@ -94,8 +104,14 @@ make stable
 [frida] Successfully attached to PID ...
 ```
 
-4. 再回到微信里打开目标小程序业务页
-5. 用 `Google Chrome` 打开：
+5. 如果随后检测到小程序页面打开，控制台还会继续提示：
+
+```text
+[doctor] WeApp renderer detected: WeChat=1 WeChatAppEx=1 Helpers=... WeApp=1
+[doctor] Chrome DevTools URL: devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
+```
+
+6. 再用 `Google Chrome` 打开：
 
 ```text
 devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
@@ -112,9 +128,11 @@ make probe-basic
 如果你不想记 `yarn` 命令，也可以直接用这些快捷命令：
 
 ```bash
+make up
 make stable
 make compat
 make full
+make doctor
 make probe-basic
 make probe-advanced
 make probe-live
@@ -143,10 +161,10 @@ devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
 如果你要做回归验证，而不是人工点 DevTools，先跑：
 
 ```bash
-yarn probe:basic
+make probe-basic
 ```
 
-确认 `start:stable` 本身不闪退后，再考虑 `yarn probe:advanced` 或 `yarn probe:live`。
+确认 `make up` / `make stable` 本身不闪退后，再考虑 `make probe-advanced` 或 `make probe-live`。
 
 更详细的稳定使用说明见 `docs/STABLE_MODE.md`。
 
