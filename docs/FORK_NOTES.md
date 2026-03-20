@@ -23,6 +23,18 @@ older dotted form. This fork maps:
 
 That allows the existing `addresses.18788.json` offsets to be reused directly.
 
+### 1.1 Local verified target matrix was recorded
+
+The fork now explicitly records the local versions it was validated against:
+
+- WeChat app `4.1.7`
+- bundle version `34371`
+- `WeChatAppEx` runtime `client_version` `4066645761` (`0xf2641701`)
+- target mini program `wx5a8f481d967649eb` version `137`
+
+This is documented in `docs/VERSION_MATRIX.md` so later maintainers know which
+results came from a real local run and which parts remain generalized.
+
 ### 2. Stable mode is the default
 
 The upstream behavior is effective but aggressive. This fork defaults to a

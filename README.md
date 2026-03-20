@@ -30,6 +30,23 @@ macOS 上的微信小程序远程调试桥，基于微信私有远程调试协�
 
 详细变更见 `docs/FORK_NOTES.md`。
 
+## Verified local environment
+
+这份 fork 当前明确按以下本机环境整理和验证：
+
+- WeChat app version: `4.1.7`
+- WeChat bundle version: `34371`
+- `WeChatAppEx` runtime `client_version`: `4066645761` (`0xf2641701`)
+- XWEB / WMPF config target: `18788`
+
+当前实际验证过的目标小程序：
+
+- appid: `wx5a8f481d967649eb`
+- mini program version: `137`
+- observed page entry: `https://servicewechat.com/wx5a8f481d967649eb/137/page-frame.html`
+
+这组版本信息的详细记录见 `docs/VERSION_MATRIX.md`。
+
 ## Supported versions
 
 当前明确整理和验证过的版本：
